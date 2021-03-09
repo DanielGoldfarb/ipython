@@ -400,6 +400,16 @@ class HistoryAccessor(HistoryAccessorBase):
             return reversed(list(cur))
         return cur
 
+    def _get_range_sqlf(self, session, start=1, stop=None, raw=True,output=False):
+        if stop:
+            lineclause = "line >= ? AND line < ?"
+            params = (session, start, stop)
+        else:
+            lineclause = "line>=?"
+            params = (session, start)
+
+        return ("session==? AND %s" % lineclause, params)
+
     @catch_corrupt_db
     def get_range(self, session, start=1, stop=None, raw=True,output=False):
         """Retrieve input by session.
@@ -428,15 +438,10 @@ class HistoryAccessor(HistoryAccessorBase):
           (session, line, input) if output is False, or
           (session, line, (input, output)) if output is True.
         """
-        if stop:
-            lineclause = "line >= ? AND line < ?"
-            params = (session, start, stop)
-        else:
-            lineclause = "line>=?"
-            params = (session, start)
 
-        return self._run_sql("WHERE session==? AND %s" % lineclause,
-                                    params, raw=raw, output=output)
+        sqlf, params = self._get_range_sqlf(session,start,stop,raw,output)
+
+        return self._run_sql("WHERE "+sqlf, params, raw=raw, output=output)
 
     def get_range_by_str(self, rangestr, raw=True, output=False):
         """Get lines of history from a string of ranges, as used by magic
