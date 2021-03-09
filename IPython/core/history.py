@@ -358,6 +358,27 @@ class HistoryAccessor(HistoryAccessorBase):
             return reversed(list(cur)[1:])
         return reversed(list(cur))
 
+    def _search_sqlf(self, pattern="*", raw=True, search_raw=True,
+                     output=False, n=None, unique=False):
+        tosearch = "source_raw" if search_raw else "source"
+        if output:
+            tosearch = "history." + tosearch
+        self.writeout_cache()
+        sqlform = "%s GLOB ?" % tosearch
+        params = (pattern,)
+        if unique:
+            sqlform += ' GROUP BY {0}'.format(tosearch)
+        if n is not None:
+            sqlform += " ORDER BY session DESC, line DESC LIMIT ?"
+            params += (n,)
+        elif unique:
+            sqlform += " ORDER BY session, line"
+
+        #  SELECT session, line, source_raw from history where source_raw GLOB "*intraday = pd.read_csv*"
+
+        return(sqlform, params)
+
+
     @catch_corrupt_db
     def search(self, pattern="*", raw=True, search_raw=True,
                output=False, n=None, unique=False):
@@ -382,19 +403,41 @@ class HistoryAccessor(HistoryAccessorBase):
         -------
         Tuples as :meth:`get_range`
         """
-        tosearch = "source_raw" if search_raw else "source"
-        if output:
-            tosearch = "history." + tosearch
-        self.writeout_cache()
-        sqlform = "WHERE %s GLOB ?" % tosearch
-        params = (pattern,)
-        if unique:
-            sqlform += ' GROUP BY {0}'.format(tosearch)
+        sqlf, params = self._search_sqlf(pattern=pattern,raw=raw,search_raw=search_raw,
+                                         output=output,n=n,unique=unique)
+        print('sqlf="',"WHERE "+sqlf,'"')
+        print('params=',params)
+        cur = self._run_sql("WHERE "+sqlf, params, raw=raw, output=output)
         if n is not None:
-            sqlform += " ORDER BY session DESC, line DESC LIMIT ?"
-            params += (n,)
-        elif unique:
-            sqlform += " ORDER BY session, line"
+            return reversed(list(cur))
+        return cur
+
+    def get_range_bystr_and_search(self,rangestr,pattern="*",raw=True,
+                             search_raw=True,output=False,n=None,unique=False):
+
+        print('in `get_range_bystr_and_search` pattern=',pattern)
+        for sess, s, e in extract_hist_ranges(rangestr):
+            for line in self.get_range_and_search(sess, s, e, pattern, raw,
+                                                  search_raw, output, n, unique):
+                yield line
+
+    def get_range_and_search(self,session,start,stop,pattern,raw,
+                             search_raw,output,n,unique):
+     
+        print('in `get_range_and_search` pattern=',pattern)
+        print('    session,start,stop,n=',session,start,stop,n)
+
+        sqlf1, params1 = self._search_sqlf(pattern=pattern,raw=raw,search_raw=search_raw,
+                                         output=output,n=n,unique=unique)
+
+        sqlf2, params2 = self._get_range_sqlf(session,start,stop,raw,output)
+
+        sqlform = "WHERE "+sqlf1+" AND "+sqlf2
+        params  = params1 + params2
+
+        print('sqlform="'+sqlform+'"')
+        print('params=',params)
+
         cur = self._run_sql(sqlform, params, raw=raw, output=output)
         if n is not None:
             return reversed(list(cur))
@@ -440,6 +483,9 @@ class HistoryAccessor(HistoryAccessorBase):
         """
 
         sqlf, params = self._get_range_sqlf(session,start,stop,raw,output)
+
+        print('sqlform="WHERE '+sqlf+'"')
+        print('params=',params)
 
         return self._run_sql("WHERE "+sqlf, params, raw=raw, output=output)
 
