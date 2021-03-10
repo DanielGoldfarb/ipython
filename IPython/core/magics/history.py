@@ -183,10 +183,8 @@ class HistoryMagics(Magics):
             n = 10 if limit is None else limit
             hist = history_manager.get_tail(n, raw=raw, output=get_output)
         else:
-            print('args.range=',args.range,' args.pattern=',args.pattern)
             if args.range and args.pattern:  # Get history by ranges AND pattern
                 pattern = "*" + " ".join(args.pattern) + "*"
-                print('pattern=',pattern)
                 hist = history_manager.get_range_bystr_and_search(" ".join(args.range),pattern,
                                            raw=raw,output=get_output,n=limit,unique=args.unique)
             elif args.range:      # Get history by ranges

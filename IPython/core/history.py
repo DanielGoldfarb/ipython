@@ -405,8 +405,8 @@ class HistoryAccessor(HistoryAccessorBase):
         """
         sqlf, params = self._search_sqlf(pattern=pattern,raw=raw,search_raw=search_raw,
                                          output=output,n=n,unique=unique)
-        print('sqlf="',"WHERE "+sqlf,'"')
-        print('params=',params)
+        #print('sqlf="',"WHERE "+sqlf,'"')
+        #print('params=',params)
         cur = self._run_sql("WHERE "+sqlf, params, raw=raw, output=output)
         if n is not None:
             return reversed(list(cur))
@@ -415,17 +415,18 @@ class HistoryAccessor(HistoryAccessorBase):
     def get_range_bystr_and_search(self,rangestr,pattern="*",raw=True,
                              search_raw=True,output=False,n=None,unique=False):
 
-        print('in `get_range_bystr_and_search` pattern=',pattern)
+        #print('in `get_range_bystr_and_search` pattern=',pattern)
         for sess, s, e in extract_hist_ranges(rangestr):
-            for line in self.get_range_and_search(sess, s, e, pattern, raw,
+            session = sess + self.session_number if sess <= 0 else sess
+            for line in self.get_range_and_search(session, s, e, pattern, raw,
                                                   search_raw, output, n, unique):
                 yield line
 
     def get_range_and_search(self,session,start,stop,pattern,raw,
                              search_raw,output,n,unique):
      
-        print('in `get_range_and_search` pattern=',pattern)
-        print('    session,start,stop,n=',session,start,stop,n)
+        #print('in `get_range_and_search` pattern=',pattern)
+        #print('    session,start,stop,n=',session,start,stop,n)
 
         sqlf1, params1 = self._search_sqlf(pattern=pattern,raw=raw,search_raw=search_raw,
                                          output=output,n=n,unique=unique)
@@ -435,8 +436,8 @@ class HistoryAccessor(HistoryAccessorBase):
         sqlform = "WHERE "+sqlf1+" AND "+sqlf2
         params  = params1 + params2
 
-        print('sqlform="'+sqlform+'"')
-        print('params=',params)
+        #print('sqlform="'+sqlform+'"')
+        #print('params=',params)
 
         cur = self._run_sql(sqlform, params, raw=raw, output=output)
         if n is not None:
@@ -481,11 +482,12 @@ class HistoryAccessor(HistoryAccessorBase):
           (session, line, input) if output is False, or
           (session, line, (input, output)) if output is True.
         """
+        #print('in get_range(session, start, stop =',session, start, stop)
 
         sqlf, params = self._get_range_sqlf(session,start,stop,raw,output)
 
-        print('sqlform="WHERE '+sqlf+'"')
-        print('params=',params)
+        #print('sqlform="WHERE '+sqlf+'"')
+        #print('params=',params)
 
         return self._run_sql("WHERE "+sqlf, params, raw=raw, output=output)
 
@@ -506,6 +508,7 @@ class HistoryAccessor(HistoryAccessorBase):
         Tuples as :meth:`get_range`
         """
         for sess, s, e in extract_hist_ranges(rangestr):
+            #print('in get_range_by_str: sess, s, e =',sess, s, e)
             for line in self.get_range(sess, s, e, raw=raw, output=output):
                 yield line
 
